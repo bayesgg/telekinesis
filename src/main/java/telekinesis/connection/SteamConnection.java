@@ -132,6 +132,10 @@ public class SteamConnection extends Publisher<SteamConnection> {
         }
     }
 
+    public boolean isAlive() {
+        return channel != null && channel.isActive();
+    }
+
     public class ConnectionHandler extends SimpleChannelInboundHandler<Message> {
 
         @Override
@@ -233,8 +237,10 @@ public class SteamConnection extends Publisher<SteamConnection> {
 
     private void changeConnectionState(ConnectionState newState) {
         if (connectionState == newState) {
+            log.debug("connectionState is already %s", newState);
             return;
         }
+        log.debug("updating connectionState to %s", newState);
         connectionState = newState;
         publish(this, connectionState);
     }

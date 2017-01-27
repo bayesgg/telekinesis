@@ -126,7 +126,7 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
 
     // TODO: only for testing, remove this
     public boolean isConnectionAlive() {
-        return connection != null;
+        return connection != null && connection.isAlive();
     }
 
     protected void performLogon() throws IOException {
@@ -166,14 +166,19 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
 
     private void changeClientState(SteamClientState newState) {
         if (clientState == newState) {
+            log.debug("clientState is already %s", newState);
             return;
         }
+        log.debug("updating clientState to %s", newState);
         clientState = newState;
         publish(this, clientState);
     }
 
     protected void handleConnectionStateChange(SteamConnection conn, ConnectionState newState) throws IOException {
         switch(newState) {
+            case CONNECTING:
+                changeClientState(SteamClientState.CONNECTING);
+                break;
             case ESTABLISHED:
                 performLogon();
                 break;
