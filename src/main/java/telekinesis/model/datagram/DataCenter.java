@@ -8,6 +8,8 @@ public class DataCenter {
 
     @JsonProperty("address_ranges")
     private List<AddressRange> addressRanges;
+    @JsonProperty("partners")
+    private Integer partners;
 
     public List<AddressRange> getAddressRanges() {
         return addressRanges;
