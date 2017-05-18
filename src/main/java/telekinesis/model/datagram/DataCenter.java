@@ -15,6 +15,10 @@ public class DataCenter {
         return addressRanges;
     }
 
+    public Integer getPartners() {
+        return partners;
+    }
+
     public boolean containsAddress(int ip) {
         for (AddressRange addressRange : addressRanges) {
             if (addressRange.containsAddress(ip)) {
