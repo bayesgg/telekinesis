@@ -2,6 +2,8 @@ package telekinesis.client;
 
 import com.google.protobuf.ByteString;
 import io.netty.channel.EventLoopGroup;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import telekinesis.client.module.GameConnectTokens;
 import telekinesis.client.module.SteamFriends;
@@ -26,9 +28,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+@Slf4j
 public class SteamClient extends Publisher<SteamClient> implements ClientMessageHandler {
-
-    private static final Logger log = PrintfLoggerFactory.getLogger("steam");
 
     private static final SimpleClientMessageTypeRegistry HANDLED_MESSAGES = new SimpleClientMessageTypeRegistry()
             .registerProto(EMsg.ClientLogon.v(), SM_ClientServer.CMsgClientLogon.class)
@@ -42,15 +43,15 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
             .registerProto(EMsg.ClientPlayingSessionState.v(), SM_ClientServer.CMsgClientPlayingSessionState.class)
             .registerProto(EMsg.ClientGamesPlayedWithDataBlob.v(), SM_ClientServer.CMsgClientGamesPlayed.class);
 
-    private final EventLoopGroup workerGroup;
-    private final SteamClientDelegate delegate;
-    private final SteamDatagramNetwork datagramNetwork;
-    private final MessageDispatcher selfHandledMessageDispatcher;
-    private final Set<SteamClientModule> modules;
+    @Getter private final EventLoopGroup workerGroup;
+    @Getter private final SteamClientDelegate delegate;
+    @Getter private final SteamDatagramNetwork datagramNetwork;
+    @Getter private final MessageDispatcher selfHandledMessageDispatcher;
+    @Getter private final Set<SteamClientModule> modules;
 
-    private SteamConnection connection;
-    private int publicIp;
-    private SteamClientState clientState;
+    @Getter private SteamConnection connection;
+    @Getter private int publicIp;
+    @Getter private SteamClientState clientState;
 
     public SteamClient(EventLoopGroup workerGroup, SteamClientDelegate delegate) {
         this.workerGroup = workerGroup;
@@ -254,25 +255,4 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
     private void handleClientPlayingSessionState(ClientMessageContext ctx, SM_ClientServer.CMsgClientPlayingSessionState msg) {
         publish(this, msg);
     }
-
-    public int getPublicIp() {
-        return publicIp;
-    }
-
-    public long getSteamId() {
-        return connection.getSteamId();
-    }
-
-    public EventLoopGroup getWorkerGroup() {
-        return workerGroup;
-    }
-
-    public SteamClientDelegate getDelegate() {
-        return delegate;
-    }
-
-    public SteamDatagramNetwork getDatagramNetwork() {
-        return datagramNetwork;
-    }
-
 }

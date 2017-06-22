@@ -1,0 +1,29 @@
+plugins {
+     id 'java'
+     id 'idea'
+     id 'maven'
+ }
+
+ group 'spheenik.telekinesis'
+ version '2.0-SNAPSHOT'
+
+ sourceCompatibility = 1.8
+
+ repositories {
+     mavenLocal()
+     mavenCentral()
+     jcenter()
+ }
+
+dependencies {
+
+    compileOnly "org.projectlombok:lombok:1.16.14"
+    compile 'org.slf4j:slf4j-api:1.7.13'
+    compile 'io.netty:netty-common:4.0.34.Final'
+    compile 'io.netty:netty-transport:4.0.34.Final'
+    compile 'io.netty:netty-handler:4.0.34.Final'
+    compile 'com.google.protobuf:protobuf-java:2.6.1'
+    compile 'org.bouncycastle:bcprov-ext-jdk14:1.47'
+    compile 'com.fasterxml.jackson.core:jackson-databind:2.8.4'
+
+}
