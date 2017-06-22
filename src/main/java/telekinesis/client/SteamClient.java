@@ -4,13 +4,11 @@ import com.google.protobuf.ByteString;
 import io.netty.channel.EventLoopGroup;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
 import telekinesis.client.module.GameConnectTokens;
 import telekinesis.client.module.SteamFriends;
 import telekinesis.connection.ClientMessageContext;
 import telekinesis.connection.ConnectionState;
 import telekinesis.connection.SteamConnection;
-import telekinesis.logger.PrintfLoggerFactory;
 import telekinesis.message.SimpleClientMessageTypeRegistry;
 import telekinesis.message.proto.generated.steam.SM_ClientServer;
 import telekinesis.model.AppId;
@@ -43,6 +41,9 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
             .registerProto(EMsg.ClientPlayingSessionState.v(), SM_ClientServer.CMsgClientPlayingSessionState.class)
             .registerProto(EMsg.ClientGamesPlayedWithDataBlob.v(), SM_ClientServer.CMsgClientGamesPlayed.class);
 
+    private static final String DEFAULT_STEAM_SERVICE_HOST = "162.254.195.44";
+    private static final int DEFAULT_STEAM_SERVICE_PORT = 27020;
+
     @Getter private final EventLoopGroup workerGroup;
     @Getter private final SteamClientDelegate delegate;
     @Getter private final SteamDatagramNetwork datagramNetwork;
@@ -52,6 +53,9 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
     @Getter private SteamConnection connection;
     @Getter private int publicIp;
     @Getter private SteamClientState clientState;
+
+    @Getter private String steamServiceHost = DEFAULT_STEAM_SERVICE_HOST;
+    @Getter private int steamServicePort = DEFAULT_STEAM_SERVICE_PORT;
 
     public SteamClient(EventLoopGroup workerGroup, SteamClientDelegate delegate) {
         this.workerGroup = workerGroup;
@@ -100,7 +104,7 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
     }
 
     public void connect() {
-        connection.connect("162.254.195.44", 27020);
+        connection.connect(steamServiceHost, steamServicePort);
         datagramNetwork.connect();
     }
 
@@ -131,7 +135,7 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
     }
 
     protected void performLogon() throws IOException {
-        log.info("performing logon for %s", delegate.getAccountName());
+        log.info("performing logon for {}", delegate.getAccountName());
 
         changeClientState(SteamClientState.LOGGING_IN);
 
@@ -167,10 +171,10 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
 
     private void changeClientState(SteamClientState newState) {
         if (clientState == newState) {
-            log.debug("clientState is already %s", newState);
+            log.debug("clientState is already {}", newState);
             return;
         }
-        log.debug("updating clientState to %s", newState);
+        log.debug("updating clientState to {}", newState);
         clientState = newState;
         publish(this, clientState);
     }
@@ -210,14 +214,17 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
 
     protected void handleClientLogonResponse(ClientMessageContext ctx, SM_ClientServer.CMsgClientLogonResponse msg) {
         log.info("received logon response");
-        if (msg.getEresult() == EResult.OK.v()) {
-            connection.enableHeartbeat(msg.getOutOfGameHeartbeatSeconds());
-
-            getModule(SteamFriends.class).setPersonaState(EPersonaState.Online);
-            changeClientState(SteamClientState.LOGGED_ON);
-            publicIp = msg.getPublicIp();
-        } else {
-            changeClientState(SteamClientState.LOGON_FAILED);
+        final EResult eResult = EResult.f(msg.getEresult());
+        switch(eResult) {
+            case OK:
+                connection.enableHeartbeat(msg.getOutOfGameHeartbeatSeconds());
+                getModule(SteamFriends.class).setPersonaState(EPersonaState.Online);
+                changeClientState(SteamClientState.LOGGED_ON);
+                publicIp = msg.getPublicIp();
+                break;
+            default:
+                log.error("steam logon failed: {}", eResult);
+                changeClientState(SteamClientState.LOGON_FAILED);
         }
     }
 

@@ -1,6 +1,7 @@
 package telekinesis.model.steam;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public enum EResult {
     Invalid(0),
@@ -88,7 +89,7 @@ public enum EResult {
         return code;
     }
 
-    private static HashMap<Integer, EResult> values = new HashMap<Integer, EResult>();
+    private static Map<Integer, EResult> values = new HashMap<Integer, EResult>();
 
     static {
         for (final EResult type : EResult.values()) {

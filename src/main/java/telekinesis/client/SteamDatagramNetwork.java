@@ -3,6 +3,7 @@ package telekinesis.client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.channel.EventLoop;
 import io.netty.util.concurrent.ScheduledFuture;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import telekinesis.logger.PrintfLoggerFactory;
 import telekinesis.model.SteamClientDelegate;
@@ -23,9 +24,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 public class SteamDatagramNetwork {
-
-    private static final Logger log = PrintfLoggerFactory.getLogger("steam.sdr");
 
     private static final String configFile = "network_config.json";
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -99,13 +99,13 @@ public class SteamDatagramNetwork {
                 delegate.writeFile(configFile, 0, ByteBuffer.wrap(mapper.writeValueAsString(config).getBytes("UTF-8")), StandardOpenOption.TRUNCATE_EXISTING);
                 retrySeconds = 600;
             } else {
-                log.warn("querying steam datagram relay config returned unexpected status %d", status);
+                log.warn("querying steam datagram relay config returned unexpected status {}", status);
                 retrySeconds = 60;
             }
-            log.info("next fetch of steam datagram relay config in %d seconds.", retrySeconds);
+            log.info("next fetch of steam datagram relay config in {} seconds.", retrySeconds);
             fetchFuture = eventLoop.schedule(this::readConfigFromWeb, retrySeconds, TimeUnit.SECONDS);
         } catch (Exception e) {
-            log.info("getting network_config.json from steam failed: %s", e.getMessage());
+            log.info("getting network_config.json from steam failed: {}", e.getMessage());
             fetchFuture = eventLoop.schedule(this::readConfigFromWeb, 60, TimeUnit.SECONDS);
         }
     }
@@ -125,11 +125,6 @@ public class SteamDatagramNetwork {
             value >>>= 8;
         }
         return result;
-    }
-
-    public static void main(String[] args) {
-        System.out.println(stringToIntId("vie"));
-        System.out.println(intToStringId(7760229));
     }
 
 }
