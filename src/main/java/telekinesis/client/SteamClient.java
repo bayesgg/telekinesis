@@ -23,8 +23,11 @@ import telekinesis.util.Publisher;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SteamClient extends Publisher<SteamClient> implements ClientMessageHandler {
 
@@ -98,8 +101,58 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
         return null;
     }
 
+    private final List<SteamServer> serverList = new ArrayList<>();
+    private final AtomicInteger serverIndex = new AtomicInteger(0);
+
+    {
+        serverList.add(new SteamServer("208.64.200.201", 27017));
+        serverList.add(new SteamServer("208.64.200.201", 27018));
+        serverList.add(new SteamServer("208.64.200.201", 27019));
+        serverList.add(new SteamServer("208.64.200.201", 27020));
+        serverList.add(new SteamServer("208.64.200.202", 27017));
+        serverList.add(new SteamServer("208.64.200.202", 27018));
+        serverList.add(new SteamServer("208.64.200.202", 27019));
+        serverList.add(new SteamServer("208.64.200.203", 27017));
+        serverList.add(new SteamServer("208.64.200.203", 27018));
+        serverList.add(new SteamServer("208.64.200.203", 27019));
+        serverList.add(new SteamServer("208.64.200.204", 27017));
+        serverList.add(new SteamServer("208.64.200.204", 27018));
+        serverList.add(new SteamServer("208.64.200.204", 27019));
+        serverList.add(new SteamServer("208.64.200.205", 27017));
+        serverList.add(new SteamServer("208.64.200.205", 27018));
+        serverList.add(new SteamServer("208.64.200.205", 27019));
+        serverList.add(new SteamServer("208.78.164.9", 27017));
+        serverList.add(new SteamServer("208.78.164.9", 27018));
+        serverList.add(new SteamServer("208.78.164.9", 27019));
+        serverList.add(new SteamServer("208.78.164.10", 27017));
+        serverList.add(new SteamServer("208.78.164.10", 27018));
+        serverList.add(new SteamServer("208.78.164.10", 27019));
+        serverList.add(new SteamServer("208.78.164.11", 27017));
+        serverList.add(new SteamServer("208.78.164.11", 27018));
+        serverList.add(new SteamServer("208.78.164.11", 27019));
+        serverList.add(new SteamServer("208.78.164.12", 27017));
+        serverList.add(new SteamServer("208.78.164.12", 27018));
+        serverList.add(new SteamServer("208.78.164.12", 27019));
+        serverList.add(new SteamServer("208.78.164.13", 27017));
+        serverList.add(new SteamServer("208.78.164.13", 27018));
+        serverList.add(new SteamServer("208.78.164.13", 27019));
+        serverList.add(new SteamServer("208.78.164.14", 27017));
+        serverList.add(new SteamServer("208.78.164.14", 27018));
+        serverList.add(new SteamServer("208.78.164.14", 27019));
+    }
+
+    private static class SteamServer {
+        private final String address;
+        private final int port;
+        private SteamServer(String address, int port) {
+            this.address = address;
+            this.port = port;
+        }
+    }
+
     public void connect() {
-        connection.connect("162.254.195.44", 27020);
+        final SteamServer steamServer = serverList.get(serverIndex.getAndIncrement() % serverList.size());
+        connection.connect(steamServer.address, steamServer.port);
         datagramNetwork.connect();
     }
 
