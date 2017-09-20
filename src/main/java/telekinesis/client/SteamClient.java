@@ -105,22 +105,6 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
     private final AtomicInteger serverIndex = new AtomicInteger(0);
 
     {
-        serverList.add(new SteamServer("208.64.200.201", 27017));
-        serverList.add(new SteamServer("208.64.200.201", 27018));
-        serverList.add(new SteamServer("208.64.200.201", 27019));
-        serverList.add(new SteamServer("208.64.200.201", 27020));
-        serverList.add(new SteamServer("208.64.200.202", 27017));
-        serverList.add(new SteamServer("208.64.200.202", 27018));
-        serverList.add(new SteamServer("208.64.200.202", 27019));
-        serverList.add(new SteamServer("208.64.200.203", 27017));
-        serverList.add(new SteamServer("208.64.200.203", 27018));
-        serverList.add(new SteamServer("208.64.200.203", 27019));
-        serverList.add(new SteamServer("208.64.200.204", 27017));
-        serverList.add(new SteamServer("208.64.200.204", 27018));
-        serverList.add(new SteamServer("208.64.200.204", 27019));
-        serverList.add(new SteamServer("208.64.200.205", 27017));
-        serverList.add(new SteamServer("208.64.200.205", 27018));
-        serverList.add(new SteamServer("208.64.200.205", 27019));
         serverList.add(new SteamServer("208.78.164.9", 27017));
         serverList.add(new SteamServer("208.78.164.9", 27018));
         serverList.add(new SteamServer("208.78.164.9", 27019));
