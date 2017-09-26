@@ -53,6 +53,7 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
 
     private SteamConnection connection;
     private int publicIp;
+    private int playingApp;
     private SteamClientState clientState;
 
     public SteamClient(EventLoopGroup workerGroup, SteamClientDelegate delegate) {
@@ -123,6 +124,10 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
         serverList.add(new SteamServer("208.78.164.14", 27017));
         serverList.add(new SteamServer("208.78.164.14", 27018));
         serverList.add(new SteamServer("208.78.164.14", 27019));
+    }
+
+    public int getPlayingApp() {
+        return playingApp;
     }
 
     private static class SteamServer {
@@ -252,6 +257,7 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
             getModule(SteamFriends.class).setPersonaState(EPersonaState.Online);
             changeClientState(SteamClientState.LOGGED_ON);
             publicIp = msg.getPublicIp();
+            playingApp = AppId.STEAM;
         } else {
             changeClientState(SteamClientState.LOGON_FAILED);
         }
@@ -289,6 +295,7 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
     }
 
     private void handleClientPlayingSessionState(ClientMessageContext ctx, SM_ClientServer.CMsgClientPlayingSessionState msg) {
+        playingApp = msg.getPlayingApp();
         publish(this, msg);
     }
 
