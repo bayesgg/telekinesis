@@ -166,6 +166,9 @@ public class MessageCodec extends ChannelDuplexHandler {
         } else if (object instanceof GeneratedMessage.Builder) {
             byte[] buf = ((GeneratedMessage.Builder) object).build().toByteArray();
             out.writeBytes(buf);
+        } else if (object instanceof GeneratedMessage) {
+            byte[] buf = ((GeneratedMessage) object).toByteArray();
+            out.writeBytes(buf);
         } else {
             throw new IOException("don't know how to encode a " + object.getClass().getName());
         }
