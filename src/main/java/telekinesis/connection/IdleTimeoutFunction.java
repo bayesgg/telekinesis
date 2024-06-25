@@ -34,7 +34,7 @@ public abstract class IdleTimeoutFunction {
         lastPing = System.nanoTime();
     }
 
-    protected abstract void onTimout();
+    protected abstract void onTimeout();
 
     private void schedule(TimeoutFunction function, long delay) {
         timeoutFunc = eventLoop.schedule(function, delay, TimeUnit.NANOSECONDS);
@@ -47,7 +47,7 @@ public abstract class IdleTimeoutFunction {
             if (nextDelay <= 0) {
                 // Writer is idle - set a new timeout and notify the callback.
                 schedule(this, timeoutNanos);
-                onTimout();
+                onTimeout();
             } else {
                 // Write occurred before the timeout - set a new timeout with shorter delay.
                 schedule(this, nextDelay);

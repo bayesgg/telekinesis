@@ -1,6 +1,8 @@
 package telekinesis.message;
 
 import com.google.protobuf.GeneratedMessage;
+import com.google.protobuf.GeneratedMessageV3;
+import com.google.protobuf.Message;
 import telekinesis.message.extended.ExtendedHeader;
 import telekinesis.message.proto.ProtoHeader;
 import telekinesis.message.simple.SimpleHeader;
@@ -26,11 +28,11 @@ public class SimpleClientMessageTypeRegistry implements ClientMessageTypeRegistr
         return registerMessageType(AppId.STEAM, messageType, ExtendedHeader.class, bodyClass);
     }
 
-    public SimpleClientMessageTypeRegistry registerProto(int messageType, Class<? extends GeneratedMessage> bodyClass) {
+    public SimpleClientMessageTypeRegistry registerProto(int messageType, Class<? extends Message> bodyClass) {
         return registerMessageType(AppId.STEAM, messageType | MessageFlag.PROTO, ProtoHeader.class, bodyClass);
     }
 
-    public SimpleClientMessageTypeRegistry registerGC(int appId, int messageType, Class<? extends GeneratedMessage> bodyClass) {
+    public SimpleClientMessageTypeRegistry registerGC(int appId, int messageType, Class<? extends Message> bodyClass) {
         return registerMessageType(appId, messageType | MessageFlag.GC | MessageFlag.PROTO, ProtoHeader.class, bodyClass);
     }
 
@@ -79,6 +81,8 @@ public class SimpleClientMessageTypeRegistry implements ClientMessageTypeRegistr
         Class<?> bodyClass = body.getClass();
         if (GeneratedMessage.Builder.class.isAssignableFrom(bodyClass)) {
             return ((GeneratedMessage.Builder) body).getDefaultInstanceForType().getClass();
+        } else if (GeneratedMessageV3.Builder.class.isAssignableFrom(bodyClass)) {
+            return ((GeneratedMessageV3.Builder) body).getDefaultInstanceForType().getClass();
         } else {
             return bodyClass;
         }

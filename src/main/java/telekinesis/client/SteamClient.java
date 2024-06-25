@@ -105,8 +105,13 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
     private final List<SteamServer> serverList = new ArrayList<>();
     private final AtomicInteger serverIndex = new AtomicInteger(0);
 
+    // https://api.steampowered.com/ISteamDirectory/GetCMList/v1/?format=json&cellid=0
     {
-        serverList.add(new SteamServer("208.78.164.9", 27017));
+        serverList.add(new SteamServer("155.133.226.75", 27017));
+        serverList.add(new SteamServer("155.133.226.75", 27018));
+        serverList.add(new SteamServer("162.254.197.39", 27017));
+        serverList.add(new SteamServer("162.254.197.39", 27018));
+        /*serverList.add(new SteamServer("208.78.164.9", 27017));
         serverList.add(new SteamServer("208.78.164.9", 27018));
         serverList.add(new SteamServer("208.78.164.9", 27019));
         serverList.add(new SteamServer("208.78.164.10", 27017));
@@ -123,7 +128,7 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
         serverList.add(new SteamServer("208.78.164.13", 27019));
         serverList.add(new SteamServer("208.78.164.14", 27017));
         serverList.add(new SteamServer("208.78.164.14", 27018));
-        serverList.add(new SteamServer("208.78.164.14", 27019));
+        serverList.add(new SteamServer("208.78.164.14", 27019));*/
     }
 
     public int getPlayingApp() {
@@ -191,10 +196,10 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
     }
 
     public void startPlaying(int appId, String appName) {
-        SM_ClientServer.CMsgClientGamesPlayed.GamePlayed.Builder gp = SM_ClientServer.CMsgClientGamesPlayed.GamePlayed.newBuilder();
+        var gp = SM_ClientServer.CMsgClientGamesPlayed.GamePlayed.newBuilder();
         gp.setGameId((long) appId);
         gp.setGameExtraInfo(appName);
-        SM_ClientServer.CMsgClientGamesPlayed.Builder msg = SM_ClientServer.CMsgClientGamesPlayed.newBuilder();
+        var msg = SM_ClientServer.CMsgClientGamesPlayed.newBuilder();
         msg.addGamesPlayed(gp);
         msg.setClientOsType(EOSType.Unknown.v());
         connection.send(msg);
