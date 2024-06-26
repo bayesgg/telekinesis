@@ -1,14 +1,15 @@
 package telekinesis.client;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
 import io.netty.channel.EventLoopGroup;
-import org.slf4j.Logger;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import telekinesis.client.module.GameConnectTokens;
 import telekinesis.client.module.SteamFriends;
 import telekinesis.connection.ClientMessageContext;
 import telekinesis.connection.ConnectionState;
 import telekinesis.connection.SteamConnection;
-import telekinesis.logger.PrintfLoggerFactory;
 import telekinesis.message.SimpleClientMessageTypeRegistry;
 import telekinesis.message.proto.generated.steam.SM_ClientServer;
 import telekinesis.model.AppId;
@@ -18,20 +19,24 @@ import telekinesis.model.steam.EMsg;
 import telekinesis.model.steam.EOSType;
 import telekinesis.model.steam.EPersonaState;
 import telekinesis.model.steam.EResult;
+import telekinesis.model.steam.GetCMListV1ResponseWrapper;
 import telekinesis.util.MessageDispatcher;
 import telekinesis.util.Publisher;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@Slf4j
 public class SteamClient extends Publisher<SteamClient> implements ClientMessageHandler {
 
-    private static final Logger log = PrintfLoggerFactory.getLogger("steam");
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     private static final SimpleClientMessageTypeRegistry HANDLED_MESSAGES = new SimpleClientMessageTypeRegistry()
             .registerProto(EMsg.ClientLogon.v(), SM_ClientServer.CMsgClientLogon.class)
@@ -45,14 +50,19 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
             .registerProto(EMsg.ClientPlayingSessionState.v(), SM_ClientServer.CMsgClientPlayingSessionState.class)
             .registerProto(EMsg.ClientGamesPlayedWithDataBlob.v(), SM_ClientServer.CMsgClientGamesPlayed.class);
 
+    @Getter
     private final EventLoopGroup workerGroup;
+    @Getter
     private final SteamClientDelegate delegate;
+    @Getter
     private final SteamDatagramNetwork datagramNetwork;
     private final MessageDispatcher selfHandledMessageDispatcher;
     private final Set<SteamClientModule> modules;
 
     private SteamConnection connection;
+    @Getter
     private int publicIp;
+    @Getter
     private int playingApp;
     private SteamClientState clientState;
 
@@ -105,47 +115,42 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
     private final List<SteamServer> serverList = new ArrayList<>();
     private final AtomicInteger serverIndex = new AtomicInteger(0);
 
-    // https://api.steampowered.com/ISteamDirectory/GetCMList/v1/?format=json&cellid=0
-    {
-        serverList.add(new SteamServer("155.133.226.75", 27017));
-        serverList.add(new SteamServer("155.133.226.75", 27018));
-        serverList.add(new SteamServer("162.254.197.39", 27017));
-        serverList.add(new SteamServer("162.254.197.39", 27018));
-        /*serverList.add(new SteamServer("208.78.164.9", 27017));
-        serverList.add(new SteamServer("208.78.164.9", 27018));
-        serverList.add(new SteamServer("208.78.164.9", 27019));
-        serverList.add(new SteamServer("208.78.164.10", 27017));
-        serverList.add(new SteamServer("208.78.164.10", 27018));
-        serverList.add(new SteamServer("208.78.164.10", 27019));
-        serverList.add(new SteamServer("208.78.164.11", 27017));
-        serverList.add(new SteamServer("208.78.164.11", 27018));
-        serverList.add(new SteamServer("208.78.164.11", 27019));
-        serverList.add(new SteamServer("208.78.164.12", 27017));
-        serverList.add(new SteamServer("208.78.164.12", 27018));
-        serverList.add(new SteamServer("208.78.164.12", 27019));
-        serverList.add(new SteamServer("208.78.164.13", 27017));
-        serverList.add(new SteamServer("208.78.164.13", 27018));
-        serverList.add(new SteamServer("208.78.164.13", 27019));
-        serverList.add(new SteamServer("208.78.164.14", 27017));
-        serverList.add(new SteamServer("208.78.164.14", 27018));
-        serverList.add(new SteamServer("208.78.164.14", 27019));*/
-    }
-
-    public int getPlayingApp() {
-        return playingApp;
-    }
-
-    private static class SteamServer {
-        private final String address;
-        private final int port;
-        private SteamServer(String address, int port) {
-            this.address = address;
-            this.port = port;
+    private void readServerListFromWeb() {
+        try {
+            var url = new URL("https://api.steampowered.com/ISteamDirectory/GetCMList/v1/?format=json&cellid=0");
+            var connection = (HttpURLConnection) url.openConnection();
+            int status = connection.getResponseCode();
+            for (Map.Entry<String, List<String>> entry : connection.getHeaderFields().entrySet()) {
+                log.debug("{}: {}", entry.getKey(), entry.getValue());
+            }
+            if (status == 200) {
+                var config = mapper.readValue(connection.getInputStream(), GetCMListV1ResponseWrapper.class);
+                config.getResponse().getServerlist().stream()
+                        .map(ipStr -> {
+                            var parts = ipStr.split(":");
+                            var host = parts[0];
+                            var port = Integer.parseInt(parts[1]);
+                            return new SteamServer(host, port);
+                        })
+                        .forEach(serverList::add);
+            } else {
+                log.warn("fetching steam cm list returned unexpected status {}", status);
+            }
+        } catch (Exception e) {
+            log.error("fetching steam cm list failed: {}", e.getMessage(), e);
         }
     }
 
+    private record SteamServer(String address, int port) {
+    }
+
     public void connect() {
-        final SteamServer steamServer = serverList.get(serverIndex.getAndIncrement() % serverList.size());
+        readServerListFromWeb();
+        if (serverList.isEmpty()) {
+            log.warn("no servers found");
+            return;
+        }
+        var steamServer = serverList.get(serverIndex.getAndIncrement() % serverList.size());
         connection.connect(steamServer.address, steamServer.port);
         datagramNetwork.connect();
     }
@@ -177,11 +182,11 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
     }
 
     protected void performLogon() throws IOException {
-        log.info("performing logon for %s", delegate.getAccountName());
+        log.info("performing logon for {}", delegate.getAccountName());
 
         changeClientState(SteamClientState.LOGGING_IN);
 
-        SM_ClientServer.CMsgClientLogon.Builder logon = SM_ClientServer.CMsgClientLogon.newBuilder();
+        var logon = SM_ClientServer.CMsgClientLogon.newBuilder();
         logon.setProtocolVersion(65575);
         logon.setAccountName(delegate.getAccountName());
         logon.setPassword(delegate.getPassword());
@@ -213,36 +218,25 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
 
     private void changeClientState(SteamClientState newState) {
         if (clientState == newState) {
-            log.debug("clientState is already %s", newState);
+            log.debug("clientState is already {}", newState);
             return;
         }
-        log.debug("updating clientState to %s", newState);
+        log.debug("updating clientState to {}", newState);
         clientState = newState;
         publish(this, clientState);
     }
 
     protected void handleConnectionStateChange(SteamConnection conn, ConnectionState newState) throws IOException {
-        switch(newState) {
-            case CONNECTING:
-                changeClientState(SteamClientState.CONNECTING);
-                break;
-            case ESTABLISHED:
-                performLogon();
-                break;
-            case BROKEN:
-                connection.disconnect();
-                break;
-            case CONNECTION_FAILED:
-            case CLOSED:
-                changeClientState(SteamClientState.LOGGED_OFF);
-                break;
-            case LOST:
+        switch (newState) {
+            case DISCONNECTED, CONNECTED, DISCONNECTING -> {}
+            case CONNECTING -> changeClientState(SteamClientState.CONNECTING);
+            case ESTABLISHED -> performLogon();
+            case BROKEN -> connection.disconnect();
+            case CONNECTION_FAILED, CLOSED ->changeClientState(SteamClientState.LOGGED_OFF);
+            case LOST -> {
                 changeClientState(SteamClientState.LOST);
                 //connection = null;
-                break;
-
-            default:
-                break;
+            }
         }
     }
 
@@ -268,13 +262,13 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
         }
     }
 
-    protected void handleClientUpdateMachineAuth(ClientMessageContext ctx, SM_ClientServer.CMsgClientUpdateMachineAuth msg) throws IOException, NoSuchAlgorithmException {
+    protected void handleClientUpdateMachineAuth(ClientMessageContext ctx, SM_ClientServer.CMsgClientUpdateMachineAuth msg) throws IOException {
         log.info("received update machine auth request");
         if (msg.getCubtowrite() != msg.getBytes().size()) {
             throw new IOException("assert failed: bytes.size != cubtowrite");
         }
 
-        SM_ClientServer.CMsgClientUpdateMachineAuthResponse.Builder builder = SM_ClientServer.CMsgClientUpdateMachineAuthResponse.newBuilder();
+        var builder = SM_ClientServer.CMsgClientUpdateMachineAuthResponse.newBuilder();
         try {
             delegate.writeFile(msg.getFilename(), msg.getOffset(), msg.getBytes().asReadOnlyByteBuffer());
             builder.setShaFile(ByteString.copyFrom(delegate.getSentrySha1()));
@@ -294,7 +288,7 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
 
     protected void handleClientNewLoginKey(ClientMessageContext ctx, SM_ClientServer.CMsgClientNewLoginKey msg) throws IOException {
         log.info("received client new login key");
-        SM_ClientServer.CMsgClientNewLoginKeyAccepted.Builder response = SM_ClientServer.CMsgClientNewLoginKeyAccepted.newBuilder();
+        var response = SM_ClientServer.CMsgClientNewLoginKeyAccepted.newBuilder();
         response.setUniqueId(msg.getUniqueId());
         ctx.reply(response);
     }
@@ -304,24 +298,7 @@ public class SteamClient extends Publisher<SteamClient> implements ClientMessage
         publish(this, msg);
     }
 
-    public int getPublicIp() {
-        return publicIp;
-    }
-
     public long getSteamId() {
         return connection.getSteamId();
     }
-
-    public EventLoopGroup getWorkerGroup() {
-        return workerGroup;
-    }
-
-    public SteamClientDelegate getDelegate() {
-        return delegate;
-    }
-
-    public SteamDatagramNetwork getDatagramNetwork() {
-        return datagramNetwork;
-    }
-
 }
