@@ -36,8 +36,6 @@ public class SteamFriends extends SteamClientModule {
         selfHandledMessageDispatcher.subscribe(SM_ClientServer.CMsgClientPlayerNicknameList.class, this::handleClientPlayerNicknameList);
         selfHandledMessageDispatcher.subscribe(SM_ClientServer.CMsgClientFriendMsgIncoming.class, this::handleClientFriendMsgIncoming);
         selfHandledMessageDispatcher.subscribe(SM_ClientServer.CMsgClientUDSInviteToGame.class, this::handleClientUDSInviteToGame);
-
-
     }
 
     @Override
@@ -92,7 +90,7 @@ public class SteamFriends extends SteamClientModule {
     }
 
     private void sendChat(long steamId, String msg) throws IOException {
-        SM_ClientServer.CMsgClientFriendMsg.Builder builder = SM_ClientServer.CMsgClientFriendMsg.newBuilder();
+        var builder = SM_ClientServer.CMsgClientFriendMsg.newBuilder();
         builder.setSteamid(steamId);
         builder.setChatEntryType(EChatEntryType.ChatMsg.v());
         builder.setMessage(CStringUtil.encodeUtf8(msg));
@@ -101,7 +99,7 @@ public class SteamFriends extends SteamClientModule {
     }
 
     public void setPersonaState(EPersonaState personaState) {
-        SM_ClientServer.CMsgClientChangeStatus.Builder builder = SM_ClientServer.CMsgClientChangeStatus.newBuilder();
+        var builder = SM_ClientServer.CMsgClientChangeStatus.newBuilder();
         builder.setPlayerName("tkbot");
         builder.setPersonaState(personaState.v());
         steamClient.request(builder, (ctx, payload) -> {
@@ -114,8 +112,4 @@ public class SteamFriends extends SteamClientModule {
     private void handleClientUDSInviteToGame(ClientMessageContext clientMessageContext, SM_ClientServer.CMsgClientUDSInviteToGame msg) {
         System.out.println(msg);
     }
-
-
-
-
 }

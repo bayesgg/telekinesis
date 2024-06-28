@@ -2,6 +2,7 @@ package telekinesis.connection.codec;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.GeneratedMessage;
+import com.google.protobuf.GeneratedMessageV3;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.Unpooled;
@@ -58,7 +59,7 @@ public class MessageCodec extends ChannelDuplexHandler {
             if (body instanceof SM_Base.CMsgMulti) {
                 unpackMulti(ctx, (SM_Base.CMsgMulti) body);
             } else if (body instanceof SM_ClientServer.CMsgGCClient) {
-                SM_ClientServer.CMsgGCClient gcBody = (SM_ClientServer.CMsgGCClient) body;
+                var gcBody = (SM_ClientServer.CMsgGCClient) body;
                 int payloadType = gcBody.getMsgtype() | MessageFlag.GC;
                 if (!registry.knowsMessageType(gcBody.getAppid(), payloadType)) {
                     log.debug("no decoder for GC payload type %d for app id %d", gcBody.getMsgtype() & MessageFlag.MASK, gcBody.getAppid());
@@ -85,11 +86,14 @@ public class MessageCodec extends ChannelDuplexHandler {
 
     protected <C> C instantiateAndDecodeObject(Class<C> objectClass, ByteBuf in) throws IllegalAccessException, InstantiationException, IOException, NoSuchMethodException, InvocationTargetException {
         if (Decodable.class.isAssignableFrom(objectClass)) {
-            C object = objectClass.newInstance();
+            C object = objectClass.getDeclaredConstructor().newInstance();
             ((Decodable) object).decode(in);
             return object;
         } else if (GeneratedMessage.class.isAssignableFrom(objectClass)) {
             GeneratedMessage object = (GeneratedMessage) objectClass.getDeclaredMethod("parseFrom", InputStream.class).invoke(null, new ByteBufInputStream(in));
+            return (C) object;
+        } else if (GeneratedMessageV3.class.isAssignableFrom(objectClass)) {
+            GeneratedMessageV3 object = (GeneratedMessageV3) objectClass.getDeclaredMethod("parseFrom", InputStream.class).invoke(null, new ByteBufInputStream(in));
             return (C) object;
         } else {
             throw new IOException("don't know how to decode a " + objectClass.getName());
@@ -168,6 +172,12 @@ public class MessageCodec extends ChannelDuplexHandler {
             out.writeBytes(buf);
         } else if (object instanceof GeneratedMessage) {
             byte[] buf = ((GeneratedMessage) object).toByteArray();
+            out.writeBytes(buf);
+        } else if (object instanceof GeneratedMessageV3.Builder) {
+            byte[] buf = ((GeneratedMessageV3.Builder) object).build().toByteArray();
+            out.writeBytes(buf);
+        } else if (object instanceof GeneratedMessageV3) {
+            byte[] buf = ((GeneratedMessageV3) object).toByteArray();
             out.writeBytes(buf);
         } else {
             throw new IOException("don't know how to encode a " + object.getClass().getName());

@@ -96,7 +96,7 @@ public class SteamConnection extends Publisher<SteamConnection> {
         b.group(workerGroup);
         b.channel(NioSocketChannel.class);
         b.option(ChannelOption.SO_KEEPALIVE, true);
-        b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
+        b.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 30000);
         b.remoteAddress(host, port);
         b.handler(new ChannelInitializer<SocketChannel>() {
             @Override
@@ -211,11 +211,11 @@ public class SteamConnection extends Publisher<SteamConnection> {
 
             Class<? extends Header> headerClass = messageRegistry.getHeaderClassForBody(appId, body);
             if (headerClass == null) {
-                throw new RuntimeException("don't now header class for body of class " + body.getClass().getName());
+                throw new RuntimeException("don't know header class for body of class " + body.getClass().getName());
             }
             Header header;
             try {
-                header = headerClass.newInstance();
+                header = headerClass.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 throw new RuntimeException("unable to create an instance of header class " + headerClass.getName(), e);
             }
@@ -274,8 +274,8 @@ public class SteamConnection extends Publisher<SteamConnection> {
     public void enableHeartbeat(int seconds) {
         this.heartbeatFunction = new IdleTimeoutFunction(channel.eventLoop()) {
             @Override
-            protected void onTimout() {
-                SM_ClientServer.CMsgClientHeartBeat.Builder msg = SM_ClientServer.CMsgClientHeartBeat.newBuilder();
+            protected void onTimeout() {
+                var msg = SM_ClientServer.CMsgClientHeartBeat.newBuilder();
                 send(msg);
             }
         };
